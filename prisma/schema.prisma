@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  name          String?
+  image         String?
+  createdAt     DateTime      @default(now())
+  chatSessions  ChatSession[]
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Celebrity {
+  id              String        @id
+  name            String
+  category        String
+  bio             String
+  imageUrl        String
+  era             String?
+  systemPrompt    String
+  personaConfig   String
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  chatSessions    ChatSession[]
+}
+
+model ChatSession {
+  id           String    @id @default(cuid())
+  userId       String
+  celebrityId  String
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+  messageCount Int       @default(0)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  celebrity    Celebrity @relation(fields: [celebrityId], references: [id])
+  messages     Message[]
+
+  @@index([userId, startedAt])
+}
+
+model Message {
+  id        String      @id @default(cuid())
+  sessionId String
+  role      String
+  content   String
+  tokens    Int?
+  createdAt DateTime    @default(now())
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+}
