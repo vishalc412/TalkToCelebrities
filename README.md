@@ -7,10 +7,12 @@ A full-stack AI-powered celebrity chat application built with Next.js 14, TypeSc
 - 🎭 **10 Celebrity Personas**: Chat with Albert Einstein, Morgan Freeman, Shah Rukh Khan, Amitabh Bachchan, Robert De Niro, Meryl Streep, Denzel Washington, Tom Hanks, Priyanka Chopra, and Marie Curie
 - 💬 **Real-time Streaming**: Streaming responses for natural conversation flow
 - 🎨 **Beautiful UI**: Modern, responsive design with Tailwind CSS and shadcn/ui
+- 🔑 **UI-based API Configuration**: Enter your OpenAI API key directly in the app (no server setup required)
 - 🔐 **Authentication**: NextAuth.js with Google OAuth (optional)
-- 💾 **Chat History**: Save conversations to PostgreSQL database
+- 💾 **Local Database**: SQLite for chat history (no external database needed)
 - 🚀 **Type-safe**: Full TypeScript implementation
 - 📱 **Responsive**: Works seamlessly on desktop and mobile
+- 🎯 **Zero Configuration**: Works out of the box - just add your API key via the UI
 
 ## Tech Stack
 
@@ -25,8 +27,8 @@ A full-stack AI-powered celebrity chat application built with Next.js 14, TypeSc
 ### Backend
 - **Next.js API Routes**
 - **Prisma ORM**
-- **PostgreSQL** database
-- **NextAuth.js** for authentication
+- **SQLite** database (local, no setup required)
+- **NextAuth.js** for authentication (optional)
 
 ### AI
 - **OpenAI API** (GPT-4o-mini)
@@ -37,9 +39,9 @@ A full-stack AI-powered celebrity chat application built with Next.js 14, TypeSc
 ### Prerequisites
 
 - Node.js 18+ and npm
-- PostgreSQL database
-- OpenAI API key
-- (Optional) Google OAuth credentials for authentication
+- OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
+
+**That's it!** No database setup or external services required.
 
 ### Installation
 
@@ -54,37 +56,26 @@ A full-stack AI-powered celebrity chat application built with Next.js 14, TypeSc
    npm install
    ```
 
-3. **Set up environment variables**
-
-   Create a `.env.local` file in the root directory:
-   ```env
-   # Database
-   DATABASE_URL="postgresql://user:password@localhost:5432/celebrity_chat"
-
-   # OpenAI
-   OPENAI_API_KEY="sk-..."
-
-   # NextAuth (optional - for authentication)
-   NEXTAUTH_URL="http://localhost:3000"
-   NEXTAUTH_SECRET="generate-a-random-secret-here"
-
-   # Google OAuth (optional)
-   GOOGLE_CLIENT_ID="your-google-client-id"
-   GOOGLE_CLIENT_SECRET="your-google-client-secret"
-   ```
-
-   To generate a `NEXTAUTH_SECRET`:
-   ```bash
-   openssl rand -base64 32
-   ```
-
-4. **Set up the database**
+3. **Initialize the database**
    ```bash
    npx prisma generate
-   npx prisma migrate dev --name init
+   npx prisma db push
    ```
 
-5. **Add celebrity images**
+4. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Configure your API key**
+
+   Open [http://localhost:3000](http://localhost:3000) and click the "API Settings" button in the top right. Enter your OpenAI API key and you're ready to chat!
+
+   **Note**: Your API key is stored securely in your browser's local storage and never sent to any server except OpenAI's API.
+
+### Optional: Add Celebrity Images
+
+You can optionally add celebrity images for a better experience:
 
    Add celebrity images to `public/celebrities/` with these filenames:
    - einstein.jpg
@@ -98,14 +89,7 @@ A full-stack AI-powered celebrity chat application built with Next.js 14, TypeSc
    - priyanka.jpg
    - marie-curie.jpg
 
-   Images should be square (1:1 aspect ratio) and at least 400x400px.
-
-6. **Run the development server**
-   ```bash
-   npm run dev
-   ```
-
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
+   Images should be square (1:1 aspect ratio) and at least 400x400px. If no images are provided, the app will use placeholder avatars.
 
 ## Project Structure
 
@@ -214,20 +198,23 @@ Edit `src/lib/openai.ts` to adjust:
 
 ### Environment Variables for Production
 
-Ensure these are set in your deployment platform:
-- `DATABASE_URL` - PostgreSQL connection string
-- `OPENAI_API_KEY` - OpenAI API key
-- `NEXTAUTH_URL` - Your production URL
-- `NEXTAUTH_SECRET` - Random secret for JWT encryption
+**Users configure their API keys via the UI**, so you only need these environment variables for optional features:
+
+- `NEXTAUTH_URL` - Your production URL (optional, for authentication)
+- `NEXTAUTH_SECRET` - Random secret for JWT encryption (optional, for authentication)
 - `GOOGLE_CLIENT_ID` - (Optional) Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET` - (Optional) Google OAuth secret
+- `OPENAI_API_KEY` - (Optional) Fallback server-side API key if users don't provide their own
 
-### Database Migration
+### Database Setup
 
-Run migrations in production:
+The SQLite database will be created automatically. Just run:
 ```bash
-npx prisma migrate deploy
+npx prisma generate
+npx prisma db push
 ```
+
+**Note**: For production with persistent storage, consider upgrading to a managed database service.
 
 ## Performance Considerations
 
@@ -238,24 +225,27 @@ npx prisma migrate deploy
 
 ## Security Notes
 
-- API routes validate requests
+- **API Key Storage**: User API keys are stored in browser local storage and never sent to your server
+- **Server-side Processing**: All OpenAI API calls happen server-side, protecting user keys
+- **No Key Logging**: API keys are never logged or stored in server databases
+- **Client-side Encryption**: Keys are stored locally and only sent to OpenAI's official API
 - User authentication is optional but recommended for production
-- Environment variables are never exposed to client
 - Database queries use Prisma's SQL injection protection
 
 ## Troubleshooting
 
 ### Common Issues
 
-**"Failed to get response"**
-- Check your `OPENAI_API_KEY` is valid
-- Verify you have OpenAI API credits
-- Check network connectivity
+**"API key not configured" or "Failed to get response"**
+- Click the "API Settings" button and enter your OpenAI API key
+- Verify your API key is correct (starts with `sk-`)
+- Check you have OpenAI API credits available
+- Ensure your API key hasn't been revoked
 
-**"Database connection failed"**
-- Verify `DATABASE_URL` is correct
-- Ensure PostgreSQL is running
-- Run `npx prisma generate` and `npx prisma migrate dev`
+**"Database errors"**
+- Run `npx prisma generate` to regenerate the Prisma client
+- Run `npx prisma db push` to sync the database schema
+- Delete `prisma/dev.db` and run `npx prisma db push` again to reset
 
 **"Celebrity images not showing"**
 - Verify images are in `public/celebrities/`

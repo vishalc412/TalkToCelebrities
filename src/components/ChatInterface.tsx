@@ -5,8 +5,10 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, Settings } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { useSettingsStore } from '@/lib/store';
+import SettingsDialog from './SettingsDialog';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -26,7 +28,9 @@ export default function ChatInterface({ celebrity }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { apiSettings, hasApiKey } = useSettingsStore();
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -37,6 +41,13 @@ export default function ChatInterface({ celebrity }: ChatInterfaceProps) {
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
+
+    // Check if API key is configured
+    if (!hasApiKey()) {
+      setSettingsOpen(true);
+      alert('Please configure your OpenAI API key in settings first.');
+      return;
+    }
 
     const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
@@ -52,10 +63,15 @@ export default function ChatInterface({ celebrity }: ChatInterfaceProps) {
           celebrityId: celebrity.id,
           userMessage: input,
           conversationHistory: messages,
+          apiKey: apiSettings.apiKey,
+          baseUrl: apiSettings.baseUrl,
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to get response');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to get response');
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -72,9 +88,9 @@ export default function ChatInterface({ celebrity }: ChatInterfaceProps) {
 
       setMessages(prev => [...prev, { role: 'assistant', content: fullMessage }]);
       setStreamingMessage('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
-      alert('Failed to send message. Please try again.');
+      alert(error.message || 'Failed to send message. Please check your API key and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -83,18 +99,30 @@ export default function ChatInterface({ celebrity }: ChatInterfaceProps) {
   return (
     <div className="flex flex-col h-[calc(100vh-200px)] max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b bg-white">
-        <Avatar>
-          <AvatarImage src={celebrity.imageUrl} alt={celebrity.name} />
-          <AvatarFallback>{celebrity.name[0]}</AvatarFallback>
-        </Avatar>
-        <div>
-          <h2 className="font-bold">{celebrity.name}</h2>
-          <p className="text-sm text-gray-500">
-            {isLoading ? 'Typing...' : 'Online'}
-          </p>
+      <div className="flex items-center justify-between p-4 border-b bg-white">
+        <div className="flex items-center gap-3">
+          <Avatar>
+            <AvatarImage src={celebrity.imageUrl} alt={celebrity.name} />
+            <AvatarFallback>{celebrity.name[0]}</AvatarFallback>
+          </Avatar>
+          <div>
+            <h2 className="font-bold">{celebrity.name}</h2>
+            <p className="text-sm text-gray-500">
+              {isLoading ? 'Typing...' : 'Online'}
+            </p>
+          </div>
         </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setSettingsOpen(true)}
+          title="API Settings"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
       </div>
+
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4 bg-gray-50">
